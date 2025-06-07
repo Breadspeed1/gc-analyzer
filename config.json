@@ -1,0 +1,17 @@
+{
+    "pure_refrigerants": [
+        "r-134a",
+        "r-1234yf",
+        "r-125",
+        "r-32"
+    ],
+    "mixtures": [
+        {
+            "name": "r-410a",
+            "components": {
+                "r-125": 50,
+                "r-32": 50
+            }
+        }
+    ]
+}
