@@ -1,34 +1,76 @@
-use std::{collections::HashMap, fs::File};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io,
+};
 
-use refrigerant::{MixtureIdentifier, RefrigerantMixture, RefrigerantName};
+use refrigerant::{
+    ClassificationList, ClassificationResult, GCReading, RefrigerantMixture, RefrigerantName,
+};
 use serde::Deserialize;
 
 mod math;
 mod refrigerant;
 
 fn main() {
-    let config: Config = serde_json::de::from_reader(
+    let mut config: Config = serde_json::de::from_reader(
         File::open("config.json").expect("Could not find config file."),
     )
     .expect("Could not read config file.");
 
-    let test = RefrigerantMixture::new(
-        MixtureIdentifier::ID(1),
-        HashMap::from_iter(
-            vec![
-                (RefrigerantName::new(&String::from("r-125")).unwrap(), 0.3),
-                (RefrigerantName::new(&String::from("r-32")).unwrap(), 0.2),
-            ]
-            .into_iter(),
-        ),
-        0.0,
-    );
+    config.init_pure_mixtures();
 
-    println!("{:?}", math::find_concentration(&test, &config.mixtures[0]));
+    println!("Please enter reading: ");
+
+    let mut input = String::new();
+
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Unable to read user input");
+
+    let reading: GCReading = input.try_into().expect("Unable to parse user input");
+
+    let mut results: Vec<ClassificationResult> = config
+        .mixtures
+        .iter()
+        .filter_map(|mix| mix.classify(&reading))
+        .collect();
+
+    results.sort_by(|r1, r2| r1.purity.partial_cmp(&r2.purity).unwrap().reverse());
+
+    println!("\nClassifications: ");
+
+    results.iter().for_each(|res| println!("{}", res));
+
+    // let test = GCReading::new(HashMap::from_iter(
+    //     vec![
+    //         (RefrigerantName::new(&String::from("r-125")).unwrap(), 0.3),
+    //         (RefrigerantName::new(&String::from("r-32")).unwrap(), 0.2),
+    //     ]
+    //     .into_iter(),
+    // ));
+
+    // let concentration = math::find_concentration(&test, &config.mixtures[0]);
+
+    // println!("{:?}", concentration);
 }
 
 #[derive(Deserialize, Debug)]
 struct Config {
-    pure_refrigerants: Vec<String>,
+    pure_refrigerants: HashSet<RefrigerantName>,
     mixtures: Vec<RefrigerantMixture>,
+}
+
+impl Config {
+    fn init_pure_mixtures(&mut self) {
+        for r in self.pure_refrigerants.iter() {
+            if !self.mixtures.iter().any(|m| m.identifier() == r) {
+                self.mixtures.push(RefrigerantMixture::new(
+                    r.clone(),
+                    HashMap::from([(r.clone(), 1.0)]),
+                    ClassificationList::default(),
+                ));
+            }
+        }
+    }
 }

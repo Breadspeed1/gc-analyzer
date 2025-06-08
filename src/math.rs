@@ -1,9 +1,9 @@
-use crate::refrigerant::RefrigerantMixture;
+use crate::refrigerant::{GCReading, RefrigerantMixture};
 
 /// finds the farthest common component of the two mixtures
 ///
 /// assumes mixtures have the same components
-fn find_weakest_component(observed: &RefrigerantMixture, target: &RefrigerantMixture) -> f64 {
+fn find_weakest_component(observed: &GCReading, target: &RefrigerantMixture) -> f64 {
     target
         .components()
         .map(|(name, concentration)| {
@@ -14,16 +14,13 @@ fn find_weakest_component(observed: &RefrigerantMixture, target: &RefrigerantMix
         .unwrap()
 }
 
-fn valid_comparison(observed: &RefrigerantMixture, target: &RefrigerantMixture) -> bool {
+pub fn valid_comparison(observed: &GCReading, target: &RefrigerantMixture) -> bool {
     observed
         .component_set()
         .is_superset(&target.component_set())
 }
 
-pub fn find_concentration(
-    observed: &RefrigerantMixture,
-    target: &RefrigerantMixture,
-) -> Option<f64> {
+pub fn find_concentration(observed: &GCReading, target: &RefrigerantMixture) -> Option<f64> {
     if !valid_comparison(observed, target) {
         return None;
     }
