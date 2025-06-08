@@ -7,11 +7,18 @@
     ],
     "mixtures": [
         {
-            "name": "r-410a",
-            "components": {
-                "r-125": 50,
-                "r-32": 50
-            }
+            "identifier": "r-410a",
+            "components": [
+                [
+                    "r-125",
+                    0.5
+                ],
+                [
+                    "r-32",
+                    0.5
+                ]
+            ],
+            "price": 1000
         }
     ]
 }
