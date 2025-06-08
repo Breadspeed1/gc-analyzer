@@ -1,6 +1,4 @@
-use std::collections::HashSet;
-
-use crate::refrigerant::{RefrigerantComponent, RefrigerantMixture};
+use crate::refrigerant::RefrigerantMixture;
 
 /// finds the farthest common component of the two mixtures
 ///
@@ -8,23 +6,18 @@ use crate::refrigerant::{RefrigerantComponent, RefrigerantMixture};
 fn find_weakest_component(observed: &RefrigerantMixture, target: &RefrigerantMixture) -> f64 {
     target
         .components()
-        .map(|c| {
-            let observed_concentration = observed.get_component(c.name()).unwrap().concentration();
-            (observed_concentration / c.concentration()).min(1.0)
+        .map(|(name, concentration)| {
+            let observed_concentration = observed.get_component(name).unwrap();
+            (observed_concentration / concentration).min(1.0)
         })
         .reduce(|a, b| a.min(b))
         .unwrap()
 }
 
 fn valid_comparison(observed: &RefrigerantMixture, target: &RefrigerantMixture) -> bool {
-    target
-        .components()
-        .collect::<HashSet<&RefrigerantComponent>>()
-        .is_subset(
-            &observed
-                .components()
-                .collect::<HashSet<&RefrigerantComponent>>(),
-        )
+    observed
+        .component_set()
+        .is_superset(&target.component_set())
 }
 
 pub fn find_concentration(

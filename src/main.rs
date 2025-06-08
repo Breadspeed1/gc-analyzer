@@ -1,6 +1,6 @@
-use std::{collections::HashSet, fs::File};
+use std::{collections::HashMap, fs::File};
 
-use refrigerant::{MixtureIdentifier, RefrigerantComponent, RefrigerantMixture, RefrigerantName};
+use refrigerant::{MixtureIdentifier, RefrigerantMixture, RefrigerantName};
 use serde::Deserialize;
 
 mod math;
@@ -14,10 +14,10 @@ fn main() {
 
     let test = RefrigerantMixture::new(
         MixtureIdentifier::ID(1),
-        HashSet::from_iter(
+        HashMap::from_iter(
             vec![
-                RefrigerantComponent(RefrigerantName::new(&String::from("r-125")).unwrap(), 0.3),
-                RefrigerantComponent(RefrigerantName::new(&String::from("r-32")).unwrap(), 0.2),
+                (RefrigerantName::new(&String::from("r-125")).unwrap(), 0.3),
+                (RefrigerantName::new(&String::from("r-32")).unwrap(), 0.2),
             ]
             .into_iter(),
         ),

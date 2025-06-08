@@ -1,8 +1,11 @@
-use std::{collections::HashSet, hash::Hash};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 use serde::Deserialize;
 
-#[derive(Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, PartialEq, Eq, Debug)]
 #[serde(try_from = "String")]
 pub struct RefrigerantName(String);
 
@@ -14,7 +17,7 @@ pub struct RefrigerantComponent(pub RefrigerantName, pub f64);
 
 pub struct RefrigerantMixture {
     identifier: MixtureIdentifier,
-    components: HashSet<RefrigerantComponent>,
+    components: HashMap<RefrigerantName, f64>,
     price: f64,
 }
 
@@ -28,7 +31,7 @@ pub enum MixtureIdentifier {
 impl RefrigerantMixture {
     pub fn new(
         identifier: MixtureIdentifier,
-        components: HashSet<RefrigerantComponent>,
+        components: HashMap<RefrigerantName, f64>,
         price: f64,
     ) -> Self {
         Self {
@@ -38,16 +41,16 @@ impl RefrigerantMixture {
         }
     }
 
-    pub fn add_component(&mut self, component: RefrigerantComponent) -> bool {
-        self.components.insert(component)
+    pub fn add_component(&mut self, name: RefrigerantName, concentration: f64) -> bool {
+        self.components.insert(name, concentration).is_some()
     }
 
-    pub fn components(&self) -> impl Iterator<Item = &RefrigerantComponent> {
+    pub fn components(&self) -> impl Iterator<Item = (&RefrigerantName, &f64)> {
         self.components.iter()
     }
 
-    pub fn get_component(&self, name: &RefrigerantName) -> Option<&RefrigerantComponent> {
-        self.components().find(|&c| &c.0 == name)
+    pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
+        self.components.get(name)
     }
 
     pub fn price(&self) -> f64 {
@@ -56,6 +59,10 @@ impl RefrigerantMixture {
 
     pub fn identifier(&self) -> &MixtureIdentifier {
         &self.identifier
+    }
+
+    pub fn component_set(&self) -> HashSet<&RefrigerantName> {
+        self.components.keys().collect()
     }
 }
 
