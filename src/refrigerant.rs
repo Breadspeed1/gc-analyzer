@@ -79,10 +79,6 @@ impl GCReading {
         Self { components }
     }
 
-    pub fn components(&self) -> impl Iterator<Item = (&RefrigerantName, &f64)> {
-        self.components.iter()
-    }
-
     pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
         self.components.get(name)
     }
@@ -153,16 +149,8 @@ impl RefrigerantMixture {
         })
     }
 
-    pub fn add_component(&mut self, name: RefrigerantName, concentration: f64) -> bool {
-        self.components.insert(name, concentration).is_some()
-    }
-
     pub fn components(&self) -> impl Iterator<Item = (&RefrigerantName, &f64)> {
         self.components.iter()
-    }
-
-    pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
-        self.components.get(name)
     }
 
     pub fn identifier(&self) -> &RefrigerantName {
