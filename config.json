@@ -36,8 +36,12 @@
                 "r-32": 0.5
             },
             "classifications": {
-                "R-410aM": 0.98,
-                "Mix 410a": 0.5
+                "R-410aM": {
+                    "purity": 0.98
+                },
+                "Mix 410a": {
+                    "purity": 0.5
+                }
             }
         },
         {

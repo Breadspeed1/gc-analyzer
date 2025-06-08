@@ -41,18 +41,6 @@ fn main() {
     println!("\nClassifications: ");
 
     results.iter().for_each(|res| println!("{}", res));
-
-    // let test = GCReading::new(HashMap::from_iter(
-    //     vec![
-    //         (RefrigerantName::new(&String::from("r-125")).unwrap(), 0.3),
-    //         (RefrigerantName::new(&String::from("r-32")).unwrap(), 0.2),
-    //     ]
-    //     .into_iter(),
-    // ));
-
-    // let concentration = math::find_concentration(&test, &config.mixtures[0]);
-
-    // println!("{:?}", concentration);
 }
 
 #[derive(Deserialize, Debug)]

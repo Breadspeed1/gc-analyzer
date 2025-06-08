@@ -12,13 +12,13 @@ const DEFAULT_LABEL: &str = "Mixed";
 
 const DEFAULT_PURITY: f64 = 0.995;
 
-#[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Deserialize, PartialEq, Eq, Debug, Clone, PartialOrd, Ord)]
 #[serde(try_from = "String")]
 pub struct RefrigerantName(String);
 
 #[derive(Deserialize, PartialEq, Debug, Default, Clone)]
-#[serde(try_from = "HashMap<String, f64>")]
-pub struct ClassificationList(Vec<(String, f64)>);
+#[serde(try_from = "HashMap<String, RefrigerantClassification>")]
+pub struct ClassificationList(Vec<(String, RefrigerantClassification)>);
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 
@@ -42,18 +42,34 @@ pub struct ClassificationResult {
     pub components: HashMap<RefrigerantName, f64>,
 }
 
-impl TryFrom<HashMap<String, f64>> for ClassificationList {
+#[derive(Debug, Clone, Deserialize, PartialEq, Default)]
+pub struct RefrigerantClassification(Vec<ClassificationConstraint>);
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ClassificationConstraint {
+    MixedWith(RefrigerantName, f64),
+    LowsLessThan(f64),
+    MinimumPurity(f64),
+}
+
+impl ClassificationConstraint {
+    pub fn evaluate(&self, reading: &GCReading, target: &RefrigerantMixture) -> bool {
+        match self {
+            ClassificationConstraint::MixedWith(hash_map) => todo!(),
+            ClassificationConstraint::LowsLessThan(_) => todo!(),
+            ClassificationConstraint::MinimumPurity(purity) => {
+                math::find_concentration(reading, target).is_some_and(|v| v >= *purity)
+            }
+        }
+    }
+}
+
+impl TryFrom<HashMap<String, RefrigerantClassification>> for ClassificationList {
     type Error = String;
 
-    fn try_from(value: HashMap<String, f64>) -> Result<Self, Self::Error> {
-        let mut vec: Vec<(String, f64)> = value.into_iter().collect();
-
-        vec.sort_by(|(_, v1), (_, v2)| {
-            v1.partial_cmp(v2)
-                .expect("Cannot have NaN classification purities")
-        });
-
-        Ok(Self(vec))
+    fn try_from(value: HashMap<String, RefrigerantClassification>) -> Result<Self, Self::Error> {
+        Ok(Self(value.into_iter().collect()))
     }
 }
 
@@ -61,15 +77,6 @@ impl ClassificationList {
     pub fn get_classification(&self, purity: f64, pure_name: &String) -> String {
         if purity >= DEFAULT_PURITY {
             return pure_name.clone();
-        }
-
-        match self
-            .0
-            .binary_search_by(|(_, v)| v.partial_cmp(&purity).expect("NaN???"))
-        {
-            Ok(i) => self.0[i].0.clone(),
-            Err(i) if i > 0 => self.0[i - 1].0.clone(),
-            _ => DEFAULT_LABEL.into(),
         }
     }
 }
@@ -86,6 +93,10 @@ impl GCReading {
     pub fn component_set(&self) -> HashSet<&RefrigerantName> {
         self.components.keys().collect()
     }
+
+    pub fn components(&self) -> impl Iterator<Item = (&RefrigerantName, &f64)> {
+        self.components.iter()
+    }
 }
 
 impl TryFrom<String> for GCReading {
@@ -93,7 +104,7 @@ impl TryFrom<String> for GCReading {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let data = value.split(",").map(|s| {
-            let parts: Vec<&str> = s.split(" ").collect();
+            let parts: Vec<&str> = s.trim().split(" ").collect();
             let name = RefrigerantName::new(&parts[0].into()).unwrap();
             let concentration = parts[1].to_string().trim().parse::<f64>().unwrap();
             (name, concentration)
@@ -159,6 +170,10 @@ impl RefrigerantMixture {
 
     pub fn component_set(&self) -> HashSet<&RefrigerantName> {
         self.components.keys().collect()
+    }
+
+    pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
+        self.components.get(name)
     }
 }
 
