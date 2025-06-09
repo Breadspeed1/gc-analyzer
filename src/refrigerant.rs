@@ -6,7 +6,7 @@ use std::{
 
 use serde::Deserialize;
 
-use crate::math;
+use crate::math::{self, MixtureOptimization};
 
 const DEFAULT_LABEL: &str = "Mixed";
 
@@ -172,7 +172,9 @@ impl RefrigerantMixture {
             return None;
         }
 
-        let result = math::optimize(reading, vec![(&self, 0.)]).0[0].0;
+        let prob = MixtureOptimization::new(reading, vec![(&self, 0.)]);
+
+        let result = prob.optimize_usage().expect("erm").0[0].0;
 
         Some(ClassificationResult {
             label: self

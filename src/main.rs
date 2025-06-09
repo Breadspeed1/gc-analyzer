@@ -4,6 +4,7 @@ use std::{
     io,
 };
 
+use math::MixtureOptimization;
 use refrigerant::{
     ClassificationList, ClassificationResult, GCReading, RefrigerantMixture, RefrigerantName,
 };
@@ -53,7 +54,7 @@ fn main() {
 
     results2.iter().for_each(|res| println!("{}", res));
 
-    let (mut results3, total_usage) = math::optimize(
+    let (mut results3, total_usage) = MixtureOptimization::new(
         &reading,
         config
             .mixtures
@@ -61,7 +62,9 @@ fn main() {
             .filter(|m| math::valid_comparison(&reading, m))
             .map(|m| (m, 0.))
             .collect(),
-    );
+    )
+    .optimize_usage()
+    .expect("idk");
 
     println!("\nTotal Optimization ({:.3}% usage):", total_usage * 100.0);
 
