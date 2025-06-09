@@ -18,15 +18,15 @@ pub struct RefrigerantName(String);
 
 #[derive(Deserialize, PartialEq, Debug, Default, Clone)]
 #[serde(try_from = "HashMap<String, RefrigerantClassification>")]
-pub struct ClassificationList(Vec<(String, RefrigerantClassification)>);
+pub struct ClassificationList<'a>(Vec<(String, RefrigerantClassification<'a>)>);
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 
-pub struct RefrigerantMixture {
+pub struct RefrigerantMixture<'a> {
     identifier: RefrigerantName,
     components: HashMap<RefrigerantName, f64>,
     #[serde(default)]
-    classifications: ClassificationList,
+    classifications: ClassificationList<'a>,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
@@ -42,20 +42,42 @@ pub struct ClassificationResult {
     pub components: HashMap<RefrigerantName, f64>,
 }
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(from = "RefrigerantName")]
+enum RefrigerantRef<'a> {
+    Unresolved(RefrigerantName),
+    Resolved(&'a RefrigerantMixture<'a>),
+}
+
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct RefrigerantClassification {
+pub struct RefrigerantClassification<'a> {
     purity: f64,
+    max_lows: Option<f64>,
     #[serde(default)]
-    constraints: Vec<ClassificationConstraint>,
+    mixed_with: HashMap<RefrigerantRef<'a>, f64>,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub enum ClassificationConstraint {
-    MixedWith(HashMap<RefrigerantName, f64>),
-    LowsLessThan(f64),
+impl<'a> From<RefrigerantName> for RefrigerantRef<'a> {
+    fn from(value: RefrigerantName) -> Self {
+        Self::Unresolved(value)
+    }
 }
 
-impl ClassificationConstraint {}
+impl<'a> RefrigerantClassification<'a> {
+    fn evaluate(&self, reading: &GCReading, origin: &RefrigerantMixture) -> bool {
+        if math::valid_comparison(reading, origin) {
+            return false;
+        }
+
+        let max_low = math::find_max_low(reading, origin);
+
+        if self.max_lows.is_some_and(|l| max_low > l) {
+            return false;
+        }
+
+        todo!()
+    }
+}
 
 impl Display for RefrigerantName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -63,15 +85,17 @@ impl Display for RefrigerantName {
     }
 }
 
-impl TryFrom<HashMap<String, RefrigerantClassification>> for ClassificationList {
+impl<'a> TryFrom<HashMap<String, RefrigerantClassification<'a>>> for ClassificationList<'a> {
     type Error = String;
 
-    fn try_from(value: HashMap<String, RefrigerantClassification>) -> Result<Self, Self::Error> {
+    fn try_from(
+        value: HashMap<String, RefrigerantClassification<'a>>,
+    ) -> Result<Self, Self::Error> {
         Ok(Self(value.into_iter().collect()))
     }
 }
 
-impl ClassificationList {
+impl<'a> ClassificationList<'a> {
     pub fn get_classification(&self, purity: f64, pure_name: &String) -> String {
         if purity >= DEFAULT_PURITY {
             return pure_name.clone();
@@ -136,11 +160,11 @@ impl Display for ClassificationResult {
     }
 }
 
-impl RefrigerantMixture {
+impl<'a> RefrigerantMixture<'a> {
     pub fn new(
         identifier: RefrigerantName,
         components: HashMap<RefrigerantName, f64>,
-        classifications: ClassificationList,
+        classifications: ClassificationList<'a>,
     ) -> Self {
         Self {
             identifier,

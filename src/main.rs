@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io,
+    ops::Sub,
 };
 
 use math::MixtureOptimization;
@@ -20,6 +21,8 @@ fn main() {
     .expect("Could not read config file.");
 
     config.init_pure_mixtures();
+
+    config.sanity_check().expect("Config sanity check failed.");
 
     println!("Please enter reading: ");
 
@@ -80,12 +83,12 @@ fn main() {
 }
 
 #[derive(Deserialize, Debug)]
-struct Config {
+struct Config<'a> {
     pure_refrigerants: HashSet<RefrigerantName>,
-    mixtures: Vec<RefrigerantMixture>,
+    mixtures: Vec<RefrigerantMixture<'a>>,
 }
 
-impl Config {
+impl<'a> Config<'a> {
     fn init_pure_mixtures(&mut self) {
         for r in self.pure_refrigerants.iter() {
             if !self.mixtures.iter().any(|m| m.identifier() == r) {
@@ -96,5 +99,26 @@ impl Config {
                 ));
             }
         }
+    }
+
+    fn sanity_check(&self) -> Result<(), String> {
+        match self.mixtures.iter().find(|mix| {
+            mix.components()
+                .map(|r| *r.1)
+                .sum::<f64>()
+                .sub(1.)
+                .abs()
+                .gt(&f64::EPSILON)
+        }) {
+            Some(mix) => {
+                return Err(format!(
+                    "Mixture [{}]'s components do not add up to 1.0. (Make sure you are listing them with proportions instead of percentages!)",
+                    mix.identifier()
+                ));
+            }
+            None => (),
+        }
+
+        Ok(())
     }
 }

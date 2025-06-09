@@ -7,10 +7,11 @@ use good_lp::{
 
 use crate::refrigerant::{GCReading, RefrigerantMixture, RefrigerantName};
 
+pub type OptimizationResult<'a> = Result<(Vec<(f64, &'a RefrigerantMixture<'a>)>, f64), String>;
+
 pub struct MixtureOptimization<'a> {
-    component_set: Vec<&'a RefrigerantName>,
     problem_variables: ProblemVariables,
-    ref_vars: Vec<(Variable, &'a RefrigerantMixture)>,
+    ref_vars: Vec<(Variable, &'a RefrigerantMixture<'a>)>,
     component_expressions: Vec<Expression>,
     constraints: Vec<Constraint>,
 }
@@ -46,7 +47,6 @@ impl<'a> MixtureOptimization<'a> {
             .collect::<Vec<_>>();
 
         Self {
-            component_set,
             problem_variables,
             ref_vars,
             component_expressions,
@@ -54,12 +54,16 @@ impl<'a> MixtureOptimization<'a> {
         }
     }
 
-    pub fn optimize_usage(self) -> Result<(Vec<(f64, &'a RefrigerantMixture)>, f64), String> {
-        let obj = self.component_expressions.into_iter().sum::<Expression>();
+    pub fn optimize_usage(self) -> OptimizationResult<'a> {
+        let obj = self.component_expressions.iter().sum::<Expression>();
 
+        self.optimize(&obj)
+    }
+
+    fn optimize(self, objective_function: &Expression) -> OptimizationResult<'a> {
         let sol = self
             .problem_variables
-            .maximise(&obj)
+            .maximise(objective_function)
             .using(good_lp::solvers::clarabel::clarabel)
             .with_all(self.constraints)
             .solve()
@@ -67,11 +71,28 @@ impl<'a> MixtureOptimization<'a> {
 
         let concentrations = self
             .ref_vars
-            .into_iter()
-            .map(|(var, mix)| (sol.value(var), mix))
+            .iter()
+            .map(|(var, mix)| (sol.value(*var), *mix))
             .collect::<Vec<_>>();
 
-        Ok((concentrations, sol.eval(obj)))
+        Ok((concentrations, sol.eval(objective_function)))
+    }
+
+    pub fn optimize_max_refrigerant(self, name: &RefrigerantName) -> OptimizationResult<'a> {
+        match self
+            .ref_vars
+            .iter()
+            .find(|&(_, mix)| mix.identifier() == name)
+        {
+            Some((var, _)) => {
+                let obj = self.component_expressions.iter().sum::<Expression>() + var;
+
+                self.optimize(&obj)
+            }
+            None => {
+                Err("Requested max refrigerant is not a part of the optimization problem.".into())
+            }
+        }
     }
 }
 
