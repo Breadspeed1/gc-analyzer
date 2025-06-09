@@ -36,11 +36,44 @@ fn main() {
         .filter_map(|mix| mix.classify(&reading))
         .collect();
 
-    results.sort_by(|r1, r2| r1.purity.partial_cmp(&r2.purity).unwrap().reverse());
+    let mut results2: Vec<ClassificationResult> = config
+        .mixtures
+        .iter()
+        .filter_map(|mix| mix.classify_optimize(&reading))
+        .collect();
 
-    println!("\nClassifications: ");
+    results.sort_by(|r1, r2| r1.purity.partial_cmp(&r2.purity).unwrap().reverse());
+    results2.sort_by(|r1, r2| r1.purity.partial_cmp(&r2.purity).unwrap().reverse());
+
+    println!("\nClassifications:");
 
     results.iter().for_each(|res| println!("{}", res));
+
+    println!("\nOptimization Classifications:");
+
+    results2.iter().for_each(|res| println!("{}", res));
+
+    let (mut results3, total_usage) = math::optimize(
+        &reading,
+        config
+            .mixtures
+            .iter()
+            .filter(|m| math::valid_comparison(&reading, m))
+            .map(|m| (m, 0.))
+            .collect(),
+    );
+
+    println!("\nTotal Optimization ({:.3}% usage):", total_usage * 100.0);
+
+    results3.sort_by(|r1, r2| r1.0.partial_cmp(&r2.0).unwrap().reverse());
+
+    results3.iter().for_each(|(percent, mix)| {
+        println!(
+            "Name: {}, Percent: {:.3}%",
+            mix.identifier(),
+            percent * 100.0
+        )
+    });
 }
 
 #[derive(Deserialize, Debug)]

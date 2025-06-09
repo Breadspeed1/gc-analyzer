@@ -108,7 +108,7 @@ pub fn optimize<'a>(
 
     let sol = pv
         .maximise(&obj)
-        .using(good_lp::default_solver)
+        .using(good_lp::solvers::clarabel::clarabel)
         .with_all(constraints)
         .solve()
         .expect("Failed to solve lineq");

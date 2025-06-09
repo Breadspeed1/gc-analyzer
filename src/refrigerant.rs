@@ -42,26 +42,24 @@ pub struct ClassificationResult {
     pub components: HashMap<RefrigerantName, f64>,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq, Default)]
-pub struct RefrigerantClassification(Vec<ClassificationConstraint>);
-
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum ClassificationConstraint {
-    MixedWith(RefrigerantName, f64),
-    LowsLessThan(f64),
-    MinimumPurity(f64),
+pub struct RefrigerantClassification {
+    purity: f64,
+    #[serde(default)]
+    constraints: Vec<ClassificationConstraint>,
 }
 
-impl ClassificationConstraint {
-    pub fn evaluate(&self, reading: &GCReading, target: &RefrigerantMixture) -> bool {
-        match self {
-            ClassificationConstraint::MixedWith(hash_map) => todo!(),
-            ClassificationConstraint::LowsLessThan(_) => todo!(),
-            ClassificationConstraint::MinimumPurity(purity) => {
-                math::find_concentration(reading, target).is_some_and(|v| v >= *purity)
-            }
-        }
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum ClassificationConstraint {
+    MixedWith(HashMap<RefrigerantName, f64>),
+    LowsLessThan(f64),
+}
+
+impl ClassificationConstraint {}
+
+impl Display for RefrigerantName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -77,6 +75,15 @@ impl ClassificationList {
     pub fn get_classification(&self, purity: f64, pure_name: &String) -> String {
         if purity >= DEFAULT_PURITY {
             return pure_name.clone();
+        }
+
+        match self
+            .0
+            .binary_search_by(|(_, v)| v.purity.partial_cmp(&purity).expect("NaN???"))
+        {
+            Ok(i) => self.0[i].0.clone(),
+            Err(i) if i > 0 => self.0[i - 1].0.clone(),
+            _ => DEFAULT_LABEL.into(),
         }
     }
 }
@@ -160,6 +167,32 @@ impl RefrigerantMixture {
         })
     }
 
+    pub fn classify_optimize(&self, reading: &GCReading) -> Option<ClassificationResult> {
+        if !math::valid_comparison(reading, &self) {
+            return None;
+        }
+
+        let result = math::optimize(reading, vec![(&self, 0.)]).0[0].0;
+
+        Some(ClassificationResult {
+            label: self
+                .classifications
+                .get_classification(result, &self.identifier.0),
+            origin: self.identifier.clone(),
+            purity: result,
+            components: self
+                .components
+                .clone()
+                .into_iter()
+                .map(|(n, v)| (n, v * result))
+                .collect(),
+        })
+    }
+
+    pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
+        self.components.get(name)
+    }
+
     pub fn components(&self) -> impl Iterator<Item = (&RefrigerantName, &f64)> {
         self.components.iter()
     }
@@ -170,10 +203,6 @@ impl RefrigerantMixture {
 
     pub fn component_set(&self) -> HashSet<&RefrigerantName> {
         self.components.keys().collect()
-    }
-
-    pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
-        self.components.get(name)
     }
 }
 
