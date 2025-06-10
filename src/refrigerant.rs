@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     hash::Hash,
+    ptr::addr_of,
 };
 
 use serde::Deserialize;
@@ -16,11 +17,11 @@ const DEFAULT_PURITY: f64 = 0.995;
 #[serde(try_from = "String")]
 pub struct RefrigerantName(String);
 
-#[derive(Deserialize, PartialEq, Debug, Default, Clone)]
+#[derive(Deserialize, PartialEq, Debug, Default)]
 #[serde(try_from = "HashMap<String, RefrigerantClassification>")]
 pub struct ClassificationList<'a>(Vec<(String, RefrigerantClassification<'a>)>);
 
-#[derive(Deserialize, PartialEq, Debug, Clone)]
+#[derive(Deserialize, PartialEq, Debug)]
 
 pub struct RefrigerantMixture<'a> {
     identifier: RefrigerantName,
@@ -42,20 +43,46 @@ pub struct ClassificationResult {
     pub components: HashMap<RefrigerantName, f64>,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(from = "RefrigerantName")]
 enum RefrigerantRef<'a> {
     Unresolved(RefrigerantName),
     Resolved(&'a RefrigerantMixture<'a>),
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize)]
 pub struct RefrigerantClassification<'a> {
     purity: f64,
     max_lows: Option<f64>,
     #[serde(default)]
     mixed_with: HashMap<RefrigerantRef<'a>, f64>,
 }
+
+impl<'a> Eq for RefrigerantClassification<'a> {}
+
+impl<'a> PartialEq for RefrigerantClassification<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        addr_of!(self) == addr_of!(other)
+    }
+}
+
+impl<'a> PartialEq for RefrigerantRef<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Unresolved(l0), Self::Unresolved(r0)) => l0 == r0,
+            (Self::Resolved(l0), Self::Resolved(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl<'a> Hash for RefrigerantRef<'a> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+    }
+}
+
+impl<'a> Eq for RefrigerantRef<'a> {}
 
 impl<'a> From<RefrigerantName> for RefrigerantRef<'a> {
     fn from(value: RefrigerantName) -> Self {
@@ -64,15 +91,19 @@ impl<'a> From<RefrigerantName> for RefrigerantRef<'a> {
 }
 
 impl<'a> RefrigerantClassification<'a> {
-    fn evaluate(&self, reading: &GCReading, origin: &RefrigerantMixture) -> bool {
+    fn evaluate(
+        &self,
+        reading: &GCReading,
+        origin: &RefrigerantMixture,
+    ) -> math::OptimizationResult<'a> {
         if math::valid_comparison(reading, origin) {
-            return false;
+            return Err("Not a valid comparison".into());
         }
 
         let max_low = math::find_max_low(reading, origin);
 
         if self.max_lows.is_some_and(|l| max_low > l) {
-            return false;
+            return Err("Max lows not within bounds".into());
         }
 
         todo!()
@@ -96,18 +127,36 @@ impl<'a> TryFrom<HashMap<String, RefrigerantClassification<'a>>> for Classificat
 }
 
 impl<'a> ClassificationList<'a> {
-    pub fn get_classification(&self, purity: f64, pure_name: &String) -> String {
-        if purity >= DEFAULT_PURITY {
-            return pure_name.clone();
-        }
-
-        match self
-            .0
-            .binary_search_by(|(_, v)| v.purity.partial_cmp(&purity).expect("NaN???"))
-        {
-            Ok(i) => self.0[i].0.clone(),
-            Err(i) if i > 0 => self.0[i - 1].0.clone(),
-            _ => DEFAULT_LABEL.into(),
+    pub fn get_classification(
+        &self,
+        reading: &GCReading,
+        origin: &RefrigerantMixture<'a>,
+    ) -> ClassificationResult {
+        match self.0.iter().find_map(|(name, class)| {
+            class
+                .evaluate(reading, origin)
+                .map(|(results, fin)| (results, fin, name))
+                .ok()
+        }) {
+            Some((mixtures, _, name)) => ClassificationResult {
+                label: name.clone(),
+                origin: origin.identifier().clone(),
+                purity: mixtures
+                    .iter()
+                    .find(|m| m.1.identifier() == origin.identifier())
+                    .unwrap()
+                    .0,
+                components: mixtures
+                    .iter()
+                    .map(|o| (o.1.identifier().clone(), o.0))
+                    .collect(),
+            },
+            None => ClassificationResult {
+                label: DEFAULT_LABEL.into(),
+                origin: origin.identifier().clone(),
+                purity: 0.,
+                components: HashMap::new(),
+            },
         }
     }
 }
@@ -173,46 +222,8 @@ impl<'a> RefrigerantMixture<'a> {
         }
     }
 
-    pub fn classify(&self, reading: &GCReading) -> Option<ClassificationResult> {
-        let purity = math::find_concentration(reading, self);
-
-        purity.map(|result| ClassificationResult {
-            label: self
-                .classifications
-                .get_classification(result, &self.identifier.0),
-            origin: self.identifier.clone(),
-            purity: result,
-            components: self
-                .components
-                .clone()
-                .into_iter()
-                .map(|(n, v)| (n, v * result))
-                .collect(),
-        })
-    }
-
-    pub fn classify_optimize(&self, reading: &GCReading) -> Option<ClassificationResult> {
-        if !math::valid_comparison(reading, &self) {
-            return None;
-        }
-
-        let prob = MixtureOptimization::new(reading, vec![(&self, 0.)]);
-
-        let result = prob.optimize_usage().expect("erm").0[0].0;
-
-        Some(ClassificationResult {
-            label: self
-                .classifications
-                .get_classification(result, &self.identifier.0),
-            origin: self.identifier.clone(),
-            purity: result,
-            components: self
-                .components
-                .clone()
-                .into_iter()
-                .map(|(n, v)| (n, v * result))
-                .collect(),
-        })
+    pub fn classify(&self, reading: &GCReading) -> ClassificationResult {
+        self.classifications.get_classification(reading, self)
     }
 
     pub fn get_component(&self, name: &RefrigerantName) -> Option<&f64> {
