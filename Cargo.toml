@@ -1,14 +1,12 @@
 [workspace]
 members = ["lib/*"]
-package.version = "0.1.0"
-package.edition = "2024"
 
-[package]
+[workspace.package]
 name = "gc-analyzer"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
 good_lp = { version = "1.14.0", features = [
     "clarabel",
 ], default-features = false }
