@@ -33,15 +33,9 @@ impl Smoother for MovingAverage {
 
 #[cfg(test)]
 mod test {
-    use nearly::assert_nearly;
+    use crate::nearly_eq;
 
     use super::*;
-
-    fn nearly_eq(a: &DVector<f64>, b: &DVector<f64>) {
-        a.iter()
-            .zip(b.iter())
-            .for_each(|(&a, &b)| assert_nearly!(a == b));
-    }
 
     fn get_test_vec() -> DVector<f64> {
         DVector::from_column_slice(&[0., 1., 2.])
