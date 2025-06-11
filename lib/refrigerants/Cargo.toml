@@ -1,0 +1,6 @@
+[package]
+name = "refrigerants"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
