@@ -4,8 +4,14 @@ trait Smoother {
     fn smooth(&self, signal: &mut DVector<f64>);
 }
 
+struct NoSmoothing;
+
 struct MovingAverage {
     k: usize,
+}
+
+impl Smoother for NoSmoothing {
+    fn smooth(&self, signal: &mut DVector<f64>) {}
 }
 
 impl MovingAverage {
