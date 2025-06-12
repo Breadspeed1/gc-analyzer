@@ -20,23 +20,29 @@ pub fn nearly_eq(a: &DVector<f64>, b: &DVector<f64>) {
 }
 
 pub fn simple_graph_vec(path: impl AsRef<Path>, data: &DVector<f64>) {
-    let root = BitMapBackend::new(path.as_ref(), (480, 320)).into_drawing_area();
+    let path = path.as_ref();
+    let root = BitMapBackend::new(path, (1280, 720)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let mut chart = ChartBuilder::on(&root)
-        .caption("diggity", ("sans-serif", 50).into_font())
-        .margin(5)
+        .caption(
+            path.components()
+                .last()
+                .unwrap()
+                .as_os_str()
+                .to_string_lossy(),
+            ("sans-serif", 50).into_font(),
+        )
+        .margin(10)
         .x_label_area_size(30)
         .y_label_area_size(30)
-        .build_cartesian_2d(0..data.len(), -50.0..data.max())
+        .build_cartesian_2d(0..data.len(), data.min()..data.max())
         .unwrap();
 
     chart.configure_mesh().draw().unwrap();
 
     chart
         .draw_series(LineSeries::new(data.iter().copied().enumerate(), &RED))
-        .unwrap()
-        .label("y = DATYAAAA")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+        .unwrap();
 
     root.present().unwrap();
 }

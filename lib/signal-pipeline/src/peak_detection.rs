@@ -2,9 +2,12 @@ use core::f64;
 use std::f64::consts;
 
 use nalgebra::DVector;
+use statrs::statistics::Statistics;
+
+const PEAK_SIGMA_THRESHOLD_MULT: f64 = 4.0;
 
 pub trait PeakDetector {
-    fn detect_peaks(signal: &DVector<f64>) -> Vec<Peak>;
+    fn detect_peaks(&self, signal: &DVector<f64>) -> Vec<Peak>;
 }
 
 #[derive(Debug)]
@@ -42,6 +45,10 @@ fn generate_2dog_kernel(scale: f64) -> DVector<f64> {
     kernel
 }
 
+fn find_minima(data: &DVector<f64>) -> Vec<usize> {
+    todo!()
+}
+
 impl DDOGPeakDetector {
     pub fn new(scales: Vec<f64>) -> Self {
         Self { scales }
@@ -49,7 +56,20 @@ impl DDOGPeakDetector {
 }
 
 impl PeakDetector for DDOGPeakDetector {
-    fn detect_peaks(signal: &DVector<f64>) -> Vec<Peak> {
+    fn detect_peaks(&self, signal: &DVector<f64>) -> Vec<Peak> {
+        let conv_minima = self
+            .scales
+            .iter()
+            .map(|&scale| signal.convolve_full(generate_2dog_kernel(scale)))
+            .map(|conv| {
+                let threshold = conv.std_dev() * PEAK_SIGMA_THRESHOLD_MULT;
+
+                find_minima(&conv)
+            })
+            .collect::<Vec<Vec<usize>>>();
+
+        //move conv minimas to coloumnar order then find best match among scales
+
         todo!()
     }
 }
@@ -60,9 +80,11 @@ mod tests {
 
     #[test]
     fn print_2dog_kernel() {
-        let kernel = generate_2dog_kernel(6.);
+        let kernel = generate_2dog_kernel(80.);
         println!("{:.5}", kernel);
 
         assert_eq!(kernel.argmin().0, kernel.len() / 2);
+
+        crate::simple_graph_vec("test-img/2dog_kernel_6sigma_test.png", &kernel);
     }
 }
