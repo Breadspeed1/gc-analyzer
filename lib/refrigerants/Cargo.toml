@@ -4,4 +4,4 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-serde = { workspace = true }
+serde = "1.0.219"

@@ -1,6 +1,7 @@
 use nalgebra::DVector;
 use nearly::assert_nearly;
 
+pub mod io;
 pub mod preprocess;
 
 pub fn nearly_eq(a: &DVector<f64>, b: &DVector<f64>) {

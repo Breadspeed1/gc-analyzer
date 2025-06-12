@@ -1,11 +1,13 @@
 use std::collections::BTreeSet;
 
+extern crate good_lp;
+
 use good_lp::{
     Constraint, Expression, IntoAffineExpression, ProblemVariables, Solution, SolverModel,
     Variable, variable, variables,
 };
 
-use crate::refrigerant::{GCReading, RefrigerantMixture, RefrigerantName};
+use refrigerants::{GCReading, RefrigerantMixture, RefrigerantName};
 
 pub type OptimizationResult<'a> = Result<(Vec<(f64, &'a RefrigerantMixture<'a>)>, f64), String>;
 

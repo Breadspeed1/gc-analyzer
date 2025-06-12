@@ -1,12 +1,12 @@
 use nalgebra::DVector;
 
-trait Smoother {
+pub trait Smoother {
     fn smooth(&self, signal: &mut DVector<f64>);
 }
 
-struct NoSmoothing;
+pub struct NoSmoothing;
 
-struct MovingAverage {
+pub struct MovingAverage {
     k: usize,
 }
 
@@ -15,7 +15,7 @@ impl Smoother for NoSmoothing {
 }
 
 impl MovingAverage {
-    fn new(k: usize) -> Option<Self> {
+    pub fn new(k: usize) -> Option<Self> {
         if k > 0 { Some(Self { k }) } else { None }
     }
 }
