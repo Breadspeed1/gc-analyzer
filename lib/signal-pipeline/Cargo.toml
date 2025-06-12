@@ -5,8 +5,11 @@ edition.workspace = true
 
 [dependencies]
 argmin-math = { version = "0.4.0", features = ["nalgebra_latest"] }
+argmin = "0.4.0"
 nearly = "0.4.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 nalgebra = { workspace = true }
 itertools = { workspace = true }
+statrs = { workspace = true }
+plotters = { workspace = true }

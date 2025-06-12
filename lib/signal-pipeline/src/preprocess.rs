@@ -11,7 +11,7 @@ pub struct MovingAverage {
 }
 
 impl Smoother for NoSmoothing {
-    fn smooth(&self, signal: &mut DVector<f64>) {}
+    fn smooth(&self, _: &mut DVector<f64>) {}
 }
 
 impl MovingAverage {
