@@ -45,7 +45,7 @@ fn generate_2dog_kernel(scale: f64) -> DVector<f64> {
     kernel
 }
 
-fn find_minima(data: &DVector<f64>) -> Vec<usize> {
+fn find_minima(data: &DVector<f64>, threshold: f64) -> Vec<usize> {
     todo!()
 }
 
@@ -64,7 +64,7 @@ impl PeakDetector for DDOGPeakDetector {
             .map(|conv| {
                 let threshold = conv.std_dev() * PEAK_SIGMA_THRESHOLD_MULT;
 
-                find_minima(&conv)
+                find_minima(&conv, threshold)
             })
             .collect::<Vec<Vec<usize>>>();
 
