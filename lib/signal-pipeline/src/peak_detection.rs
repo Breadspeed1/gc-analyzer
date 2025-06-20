@@ -173,9 +173,82 @@ impl PeakDetector for DDOGPeakDetector {
 
 #[cfg(test)]
 mod tests {
-    use plotters::style::{GREEN, RED};
+    use nalgebra::{DMatrix, DVector};
+    use plotters::{
+        chart::ChartBuilder,
+        prelude::{BitMapBackend, IntoDrawingArea, VulcanoHSL},
+        series::SurfaceSeries,
+        style::{BLACK, Color, GREEN, RED, WHITE},
+    };
 
     use crate::peak_detection::{DDOGPeakDetector, PeakDetector, generate_2dog_kernel};
+
+    #[test]
+    fn ridge_graph() {
+        let data = crate::io::read_series("../../gc-data/R16443 - Jun 08 2025, 09;24.fusion-data")
+            .unwrap();
+
+        const START: usize = 5;
+        const END: usize = 101;
+
+        let m: Vec<f64> = (START..END)
+            .map(|n| generate_2dog_kernel(n as f64))
+            .flat_map(|k| {
+                data.convolve_same(k)
+                    .into_iter()
+                    .map(|v| *v)
+                    .collect::<Vec<f64>>()
+            })
+            .collect();
+
+        let disp: DMatrix<f64> = DMatrix::from_row_slice(END - START, data.len(), &m);
+
+        let disp = disp.add_scalar(disp.min().abs());
+        let disp = disp.scale(1. / disp.max());
+
+        println!("{:?}, {}, {}", disp.shape(), disp.max(), disp.min());
+
+        let root = BitMapBackend::gif("test-img/ridge_graph.gif", (1920, 1080), 100)
+            .unwrap()
+            .into_drawing_area();
+
+        for pitch in 0..157 {
+            root.fill(&WHITE).unwrap();
+
+            let mut chart = ChartBuilder::on(&root)
+                .caption("CWT Wavelet Space!", ("sans-serif", 20))
+                .build_cartesian_3d(START..END, 0.0..1.0, 0..(data.len() / 1000))
+                .unwrap();
+
+            chart.with_projection(|mut p| {
+                p.pitch = 1.57 - (1.57 - pitch as f64 / 50.0).abs();
+                p.scale = 0.7;
+                p.into_matrix()
+            });
+
+            chart
+                .configure_axes()
+                .light_grid_style(BLACK.mix(0.15))
+                .max_light_lines(3)
+                .draw()
+                .unwrap();
+
+            chart
+                .draw_series(
+                    SurfaceSeries::xoz(0..(END - START), 0..(data.len() / 1000), |x, y| {
+                        disp.row(x)[y * 1000]
+                    })
+                    .style_func(&|&v| VulcanoHSL::get_color(v).into()),
+                )
+                .unwrap();
+
+            root.present().unwrap();
+        }
+
+        root.present().unwrap();
+
+        panic!()
+    }
 
     #[test]
     fn print_2dog_kernel() {
@@ -202,6 +275,6 @@ mod tests {
             &peaks,
         );
 
-        panic!("give me stdout bitch");
+        //panic!("give me stdout bitch");
     }
 }
