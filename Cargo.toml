@@ -1,31 +1,16 @@
-[workspace]
-members = ["lib/*"]
-resolver = "3"
-package.edition = "2024"
-package.version = "0.1.0"
-
 [package]
 name = "gc-analyzer"
 edition = "2024"
 version = "0.1.0"
 
-[workspace.dependencies]
+[dependencies]
+good_lp = { version = "1.14.0", features = [
+    "clarabel",
+], default-features = false }
+rand = "0.9.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 nalgebra = "0.33.2"
 itertools = "0.14.0"
 statrs = "0.18.0"
 plotters = { version = "0.3.7", features = ["surface_series", "colormaps"] }
-
-[dependencies]
-plotters = { workspace = true }
-good_lp = { version = "1.14.0", features = [
-    "clarabel",
-], default-features = false }
-rand = "0.9.1"
-refrigerants = { path = "lib/refrigerants" }
-signal-pipeline = { path = "lib/signal-pipeline" }
-serde = { workspace = true }
-serde_json = { workspace = true }
-nalgebra = { workspace = true }
-statrs = { workspace = true }
