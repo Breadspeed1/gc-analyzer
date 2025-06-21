@@ -14,3 +14,4 @@ nalgebra = "0.33.2"
 itertools = "0.14.0"
 statrs = "0.18.0"
 plotters = { version = "0.3.7", features = ["surface_series", "colormaps"] }
+clap = { version = "4.5.40", features = ["derive"] }

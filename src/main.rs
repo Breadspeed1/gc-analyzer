@@ -1,8 +1,29 @@
+use clap::Parser;
+
 pub mod processing;
 pub mod report;
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to the configuration file
+    #[arg(short, long, default_value_t = String::from("config.json"))]
+    config: String,
+
+    /// Path to the gc data json
+    #[arg(short, long)]
+    data: String,
+
+    /// Path to save the report to
+    #[arg(short, long, default_value_t = String::from("report.html"))]
+    report: String,
+}
+
 fn main() {
-    println!("erm wtf");
+    let args = Args::parse();
+
+    println!("{:?}", args);
+
     /*
     Parse cmd args (config location, raw file location, report output location)
     Load config (signal & categorical)
