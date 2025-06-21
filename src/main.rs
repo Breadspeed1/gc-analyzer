@@ -1,5 +1,8 @@
+use std::fs::File;
+
 use clap::Parser;
 use serde::Deserialize;
+use throbber::Throbber;
 
 pub mod processing;
 pub mod report;
@@ -28,10 +31,16 @@ struct Config {
 fn main() {
     let args = Args::parse();
 
-    println!("{:?}", args);
+    let mut th = Throbber::new().message("Parsing config.".into());
+
+    let config: Config = serde_json::de::from_reader(
+        File::open(args.config).expect("Unable to open configuration file."),
+    )
+    .expect("Unable to parse configuration file.");
+
+    th.success("Done parsing config.".into());
 
     /*
-    Load config (signal & categorical)
     Create SignalAnalyzer with signal config
     analyzer.load_file(raw file)
     raw_data_report = raw_analyzer.analyze()
