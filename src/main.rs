@@ -1,8 +1,10 @@
-use std::fs::File;
+use std::{fs::File, process::exit};
 
 use clap::Parser;
 use serde::Deserialize;
 use throbber::Throbber;
+
+use crate::processing::signal::SignalAnalyzer;
 
 pub mod processing;
 pub mod report;
@@ -39,6 +41,20 @@ fn main() {
     .expect("Unable to parse configuration file.");
 
     th.success("Done parsing config.".into());
+
+    th.change_message("Loading analyzer".into());
+
+    let analyzer = SignalAnalyzer::new(args.data);
+
+    match analyzer {
+        Ok(_) => th.success("Done loading analyzer.".into()),
+        Err(err) => {
+            th.fail(format!("{:?}", err));
+            exit(1);
+        }
+    }
+
+    let analyzer = analyzer.unwrap();
 
     /*
     Create SignalAnalyzer with signal config
