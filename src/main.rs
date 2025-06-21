@@ -1,4 +1,5 @@
 use clap::Parser;
+use serde::Deserialize;
 
 pub mod processing;
 pub mod report;
@@ -19,13 +20,17 @@ struct Args {
     report: String,
 }
 
+#[derive(Deserialize)]
+struct Config {
+    //config stuff
+}
+
 fn main() {
     let args = Args::parse();
 
     println!("{:?}", args);
 
     /*
-    Parse cmd args (config location, raw file location, report output location)
     Load config (signal & categorical)
     Create SignalAnalyzer with signal config
     analyzer.load_file(raw file)
